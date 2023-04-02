@@ -17,6 +17,8 @@ persistence:
   config:
     enabled: true
     mountPath: "/config"
+    existingClaim: sabnzbd-pvc
+    winPath: /c/sabnzbd
 
 portal:
   enabled: true

@@ -1,7 +1,7 @@
 # helm-servers
 
 Initial install:
-- Get kubernetes and docker
+- Get docker for windows and enable kubernetes
 - Install helm (https://helm.sh/docs/intro/install/)
 - Manually install argocd:
     - `kubectl create namespace argocd`
@@ -20,5 +20,6 @@ Initial install:
     - Add this repo via Settings -> Repositories using a private ssh key
     - Add the argocd application using the correct folder - you must use the name `argocd`
 
-
-Done!
+For sabnzbd:
+    - Create a folder: c:/sabnzbd
+    - To change (e.g. d:/sabnzbd), update 'winPath' field in sabnzbd/values.yaml
