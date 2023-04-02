@@ -39,6 +39,11 @@ persistence:
     mountPath: "/config"
     existingClaim: sonarr-pvc
     winPath: /c/sonarr
+  sabnzbd:
+    enabled: true
+    mountPath: "/sabnzbd"
+    existingClaim: sonarr-sab-pvc
+    winPath: /c/sabnzbd
 
 portal:
   enabled: true
