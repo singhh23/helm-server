@@ -10,6 +10,7 @@ spec:
     - ReadWriteOnce
   persistentVolumeReclaimPolicy: Retain
   claimRef:
+    namespace: {{ .Release.Namespace }}
     name: {{ .Values.persistence.config.existingClaim }}
   storageClassName: hostpath
   local:
