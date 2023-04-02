@@ -509,7 +509,7 @@ service:
 
     # -- Set the service type
     # Options: Simple(Loadbalancer), LoadBalancer, ClusterIP, NodePort
-    type: NodePort
+    type: ClusterIP
     annotationsList: []
     # - name: somename
     #   value: somevalue
@@ -564,7 +564,7 @@ service:
 
         # -- Specify the nodePort value for the LoadBalancer and NodePort service types.
         # [[ref]](https://kubernetes.io/docs/concepts/services-networking/service/#type-nodeport)
-        nodePort: 30447
+        nodePort: 
 
 # -- Configure ingressList for the chart here.
 # Additional items can be added by adding a items similar to ingress

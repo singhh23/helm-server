@@ -5,10 +5,12 @@ image:
 
 service:
   main:
+    type: NodePort
     ports:
       main:
         port: 8989
         targetPort: 8989
+        nodePort: 30448
 
 probes:
   liveness:
