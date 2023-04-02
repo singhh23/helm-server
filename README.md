@@ -23,3 +23,7 @@ Initial install:
 For sabnzbd:
     - Create a folder: c:/sabnzbd
     - To change (e.g. d:/sabnzbd), update 'winPath' field in sabnzbd/values.yaml
+
+For referencing each other:
+    - use `<service-name>.<namespace>.svc.cluster.local:<targetPort, NOT nodePort>`
+    - e.g.: `sabnzbd.sabnzbd.svc.cluster.local:10097`
