@@ -18,9 +18,6 @@
 
   {{ include "tc.common.lib.util.manifest.update" . | nindent 0 }}
 
-  {{/* Autogenerate cnpg objects if needed */}}
-  {{- include "tc.common.dependencies.cnpg.main" . }}
-
   {{/* Autogenerate postgresql passwords if needed */}}
   {{- include "tc.common.dependencies.postgresql.injector" . }}
 

@@ -51,7 +51,7 @@ before chart installation.
       mountPath: /vpn/vpn.conf
     {{- end }}
 {{- end }}
-{{- if or .Values.mariadb.enabled .Values.redis.enabled .Values.mongodb.enabled .Values.clickhouse.enabled .Values.solr.enabled .Values.postgresql.enabled .Values.cnpg.enabled }}
+{{- if or .Values.mariadb.enabled .Values.redis.enabled .Values.mongodb.enabled .Values.clickhouse.enabled .Values.solr.enabled .Values.postgresql.enabled }}
 - name: db-wait
   image: {{ .Values.ubuntuImage.repository }}:{{ .Values.ubuntuImage.tag }}
   securityContext:
@@ -143,19 +143,6 @@ before chart installation.
       until
         HOME=/config && echo "db.runCommand(\"ping\")" | mongosh --host ${MONGODB_HOST} --port 27017 ${MONGODB_DATABASE} --quiet;
         do sleep 2;
-      done
-      {{- end }}
-      {{- if .Values.cnpg.enabled }}
-      {{- $cnpgName := include "tc.common.names.fullname" . -}}
-      {{- $cnpgName = printf "%v-%v" $cnpgName "cnpg" -}}
-      {{- $pghost := printf "%s-rw" $cnpgName }}
-      until
-        pg_isready -U {{ .Values.cnpg.user }} -h {{ $pghost }}
-        do sleep 2
-      done
-      until
-        pg_isready -U {{ .Values.cnpg.user }} -h pooler-{{ $pghost }}
-        do sleep 2
       done
       {{- end }}
       {{- if .Values.mariadb.enabled }}
