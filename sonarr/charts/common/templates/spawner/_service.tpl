@@ -1,19 +1,39 @@
-{{/*
-Renders the Service objects required by the chart.
+{{/* Service Spawner */}}
+{{/* Call this template:
+{{ include "tc.v1.common.spawner.service" $ -}}
 */}}
-{{- define "tc.common.spawner.service" -}}
-  {{/* Generate named services as required */}}
-  {{- range $name, $service := .Values.service }}
+
+{{- define "tc.v1.common.spawner.service" -}}
+
+  {{/* Primary validation for enabled service. */}}
+  {{- include "tc.v1.common.lib.service.primaryValidation" $ -}}
+
+  {{- range $name, $service := .Values.service -}}
+
     {{- if $service.enabled -}}
-      {{- $serviceValues := $service -}}
 
-      {{/* set the default nameOverride to the service name */}}
-      {{- if and (not $serviceValues.nameOverride) (ne $name (include "tc.common.lib.util.service.primary" $)) -}}
-        {{- $_ := set $serviceValues "nameOverride" $name -}}
-      {{ end -}}
+      {{/* Create a copy of the configmap */}}
+      {{- $objectData := (mustDeepCopy $service) -}}
 
-      {{- $_ := set $ "ObjectValues" (dict "service" $serviceValues) -}}
-      {{- include "tc.common.class.service" $ }}
-    {{- end }}
-  {{- end }}
-{{- end }}
+      {{- $objectName := include "tc.v1.common.lib.chart.names.fullname" $ -}}
+      {{- if not $objectData.primary -}}
+        {{- $objectName = (printf "%s-%s" (include "tc.v1.common.lib.chart.names.fullname" $) $name) -}}
+      {{- end -}}
+
+      {{/* Perform validations */}}
+      {{- include "tc.v1.common.lib.chart.names.validation" (dict "name" $objectName) -}}
+      {{- include "tc.v1.common.lib.metadata.validation" (dict "objectData" $objectData "caller" "Service") -}}
+      {{- include "tc.v1.common.lib.service.validation" (dict "rootCtx" $ "objectData" $objectData) -}}
+
+      {{/* Set the name of the service account */}}
+      {{- $_ := set $objectData "name" $objectName -}}
+      {{- $_ := set $objectData "shortName" $name -}}
+
+      {{/* Call class to create the object */}}
+      {{- include "tc.v1.common.class.service" (dict "rootCtx" $ "objectData" $objectData) -}}
+
+    {{- end -}}
+
+  {{- end -}}
+
+{{- end -}}

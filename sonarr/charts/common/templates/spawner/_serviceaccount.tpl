@@ -1,19 +1,38 @@
-{{/*
-Renders the serviceAccount objects required by the chart.
+{{/* Service Account Spawner */}}
+{{/* Call this template:
+{{ include "tc.v1.common.spawner.serviceAccount" $ -}}
 */}}
-{{- define "tc.common.spawner.serviceaccount" -}}
-  {{/* Generate named serviceAccount as required */}}
-  {{- range $name, $serviceAccount := .Values.serviceAccount }}
+
+{{- define "tc.v1.common.spawner.serviceAccount" -}}
+
+  {{/* Primary validation for enabled service accounts. */}}
+  {{- include "tc.v1.common.lib.serviceAccount.primaryValidation" $ -}}
+
+  {{- range $name, $serviceAccount := .Values.serviceAccount -}}
+
     {{- if $serviceAccount.enabled -}}
-      {{- $saValues := $serviceAccount -}}
 
-      {{/* set the default nameOverride to the serviceAccount name */}}
-      {{- if and (not $saValues.nameOverride) (ne $name (include "tc.common.lib.util.serviceaccount.primary" $)) -}}
-        {{- $_ := set $saValues "nameOverride" $name -}}
-      {{ end -}}
+      {{/* Create a copy of the configmap */}}
+      {{- $objectData := (mustDeepCopy $serviceAccount) -}}
 
-      {{- $_ := set $ "ObjectValues" (dict "serviceAccount" $saValues) -}}
-      {{- include "tc.common.class.serviceAccount" $ }}
-    {{- end }}
-  {{- end }}
-{{- end }}
+      {{- $objectName := include "tc.v1.common.lib.chart.names.fullname" $ -}}
+      {{- if not $objectData.primary -}}
+        {{- $objectName = (printf "%s-%s" (include "tc.v1.common.lib.chart.names.fullname" $) $name) -}}
+      {{- end -}}
+
+      {{/* Perform validations */}}
+      {{- include "tc.v1.common.lib.chart.names.validation" (dict "name" $objectName) -}}
+      {{- include "tc.v1.common.lib.metadata.validation" (dict "objectData" $objectData "caller" "Service Account") -}}
+
+      {{/* Set the name of the service account */}}
+      {{- $_ := set $objectData "name" $objectName -}}
+      {{- $_ := set $objectData "shortName" $name -}}
+
+      {{/* Call class to create the object */}}
+      {{- include "tc.v1.common.class.serviceAccount" (dict "rootCtx" $ "objectData" $objectData) -}}
+
+    {{- end -}}
+
+  {{- end -}}
+
+{{- end -}}

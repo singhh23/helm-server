@@ -1,71 +1,64 @@
-{{/*
-This template serves as a blueprint for rbac objects that are created
-using the common library.
+{{/* RBAC Class */}}
+{{/* Call this template:
+{{ include "tc.v1.common.class.rbac" (dict "rootCtx" $ "objectData" $objectData) }}
+
+rootCtx: The root context of the chart.
+objectData:
+  name: The name of the rbac.
+  labels: The labels of the rbac.
+  annotations: The annotations of the rbac.
+  clusterWide: Whether the rbac is cluster wide or not.
+  rules: The rules of the rbac.
+  subjects: The subjects of the rbac.
 */}}
-{{- define "tc.common.class.rbac" -}}
-  {{- $fullName := include "tc.common.names.fullname" . -}}
-  {{- $saName := $fullName -}}
-  {{- $rbacName := $fullName -}}
-  {{- $values := .Values.rbac -}}
-  {{- $saValues := .Values.serviceAccount -}}
-  {{- if hasKey . "ObjectValues" -}}
-    {{- with .ObjectValues.rbac -}}
-      {{- $values = . -}}
-    {{- end -}}
-  {{ end -}}
 
-  {{- if and (hasKey $values "nameOverride") $values.nameOverride -}}
-    {{- $saName = printf "%v-%v" $saName $values.nameOverride -}}
-    {{- if not (hasKey $saValues $values.nameOverride) -}}
-      {{- $saName = "default" -}}
-    {{- end }}
-  {{- end }}
+{{- define "tc.v1.common.class.rbac" -}}
 
-  {{- if and (hasKey $values "nameOverride") $values.nameOverride -}}
-    {{- $rbacName = printf "%v-%v" $rbacName $values.nameOverride -}}
-  {{- end }}
+  {{- $rootCtx := .rootCtx -}}
+  {{- $objectData := .objectData }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
+kind: {{ ternary "ClusterRole" "Role" $objectData.clusterWide }}
 metadata:
-  name: {{ $rbacName }}
+  name: {{ $objectData.name }}
+  {{- if not $objectData.clusterWide }}
+  namespace: {{ $rootCtx.Release.Namespace }}
+  {{- end }}
+  {{- $labels := (mustMerge ($objectData.labels | default dict) (include "tc.v1.common.lib.metadata.allLabels" $rootCtx | fromYaml)) -}}
+  {{- with (include "tc.v1.common.lib.metadata.render" (dict "rootCtx" $rootCtx "labels" $labels) | trim) }}
   labels:
-    {{- include "tc.common.labels" . | nindent 4 }}
-    {{- with $values.labels }}
-    {{- tpl ( toYaml . ) $ | nindent 4 }}
-    {{- end }}
+    {{- . | nindent 4 }}
+  {{- end -}}
+  {{- $annotations := (mustMerge ($objectData.annotations | default dict) (include "tc.v1.common.lib.metadata.allAnnotations" $rootCtx | fromYaml)) -}}
+  {{- with (include "tc.v1.common.lib.metadata.render" (dict "rootCtx" $rootCtx "annotations" $annotations) | trim) }}
   annotations:
-    {{- with (merge ($values.annotations | default dict) (include "tc.common.annotations" $ | fromYaml)) }}
-    {{- tpl ( toYaml . ) $ | nindent 4 }}
-    {{- end }}
-{{- with $values.rules }}
+    {{- . | nindent 4 }}
+  {{- end }}
 rules:
-  {{- tpl ( toYaml . ) $ | nindent 4 }}
-{{- end}}
-
+  {{- include "tc.v1.common.lib.rbac.rules" (dict "rootCtx" $rootCtx "objectData" $objectData) | trim | nindent 2 }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
+kind: {{ ternary "ClusterRoleBinding" "RoleBinding" $objectData.clusterWide }}
 metadata:
-  name: {{ $rbacName }}
+  name: {{ $objectData.name }}
+  {{- if not $objectData.clusterWide }}
+  namespace: {{ $rootCtx.Release.Namespace }}
+  {{- end }}
+  {{- $labels := (mustMerge ($objectData.labels | default dict) (include "tc.v1.common.lib.metadata.allLabels" $rootCtx | fromYaml)) -}}
+  {{- with (include "tc.v1.common.lib.metadata.render" (dict "rootCtx" $rootCtx "labels" $labels) | trim) }}
   labels:
-    {{- include "tc.common.labels" . | nindent 4 }}
-    {{- with $values.labels }}
-    {{- toYaml . | nindent 4 }}
-    {{- end }}
+    {{- . | nindent 4 }}
+  {{- end -}}
+  {{- $annotations := (mustMerge ($objectData.annotations | default dict) (include "tc.v1.common.lib.metadata.allAnnotations" $rootCtx | fromYaml)) -}}
+  {{- with (include "tc.v1.common.lib.metadata.render" (dict "rootCtx" $rootCtx "annotations" $annotations) | trim) }}
   annotations:
-    {{- with (merge ($values.annotations | default dict) (include "tc.common.annotations" $ | fromYaml)) }}
-    {{- toYaml . | nindent 4 }}
-    {{- end }}
+    {{- . | nindent 4 }}
+  {{- end }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: {{ $rbacName }}
+  kind: {{ ternary "ClusterRole" "Role" $objectData.clusterWide }}
+  name: {{ $objectData.name }}
 subjects:
-  - kind: ServiceAccount
-    name: {{ $saName }}
-    namespace: {{ .Release.Namespace }}
-  {{- with $values.subjects }}
-  {{- toYaml . | nindent 2 }}
-  {{- end }}
+  {{- include "tc.v1.common.lib.rbac.serviceAccount" (dict "rootCtx" $rootCtx "objectData" $objectData) | trim | nindent 2 }}
+  {{- include "tc.v1.common.lib.rbac.subjects" (dict "rootCtx" $rootCtx "objectData" $objectData) | trim | nindent 2 }}
 {{- end -}}

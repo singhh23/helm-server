@@ -1,54 +1,56 @@
-{{/*
-This template serves as a blueprint for all PersistentVolumeClaim objects that are created
-within the common library.
+{{/* PVC Class */}}
+{{/* Call this template:
+{{ include "tc.v1.common.class.pvc" (dict "rootCtx" $ "objectData" $objectData) }}
+
+rootCtx: The root context of the chart.
+objectData:
+  name: The name of the PVC.
+  labels: The labels of the PVC.
+  annotations: The annotations of the PVC.
 */}}
-{{- define "tc.common.class.pvc" -}}
-{{- $values := .Values.persistence -}}
-{{- if hasKey . "ObjectValues" -}}
-  {{- with .ObjectValues.persistence -}}
-    {{- $values = . -}}
+
+{{- define "tc.v1.common.class.pvc" -}}
+
+  {{- $rootCtx := .rootCtx -}}
+  {{- $objectData := .objectData -}}
+
+  {{- $pvcRetain := $rootCtx.Values.fallbackDefaults.pvcRetain -}}
+  {{- if (kindIs "bool" $objectData.retain) -}}
+    {{- $pvcRetain = $objectData.retain -}}
   {{- end -}}
-{{ end -}}
-{{- $pvcName := include "tc.common.names.fullname" . -}}
-{{- if and (hasKey $values "nameOverride") $values.nameOverride -}}
-  {{- if not (eq $values.nameOverride "-") -}}
-    {{- $pvcName = printf "%v-%v" $pvcName $values.nameOverride -}}
-  {{ end -}}
-{{ end }}
-{{- if $values.forceName -}}
-  {{- $pvcName = $values.forceName -}}
-{{ end }}
----
-kind: PersistentVolumeClaim
-apiVersion: v1
-metadata:
-  name: {{ $pvcName }}
-  {{- if or $values.retain $values.annotations }}
-  annotations:
-    {{- if $values.retain }}
-    "helm.sh/resource-policy": keep
-    {{- end }}
-    {{- with (merge ($values.annotations | default dict) (include "tc.common.annotations" $ | fromYaml)) }}
-    {{- tpl ( toYaml . ) $ | nindent 4 }}
-    {{- end }}
+
+  {{- $pvcSize := $rootCtx.Values.fallbackDefaults.pvcSize -}}
+  {{- with $objectData.size -}}
+    {{- $pvcSize = tpl . $rootCtx -}}
   {{- end }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $objectData.name }}
+  {{- $labels := (mustMerge ($objectData.labels | default dict) (include "tc.v1.common.lib.metadata.allLabels" $rootCtx | fromYaml)) -}}
+  {{- with (include "tc.v1.common.lib.metadata.render" (dict "rootCtx" $rootCtx "labels" $labels) | trim) }}
   labels:
-  {{- include "tc.common.labels" . | nindent 4 }}
-  {{- with $values.labels }}
-    {{- tpl ( toYaml . ) $ | nindent 4 }}
+    {{- . | nindent 4 }}
+  {{- end -}}
+  {{- $annotations := (mustMerge ($objectData.annotations | default dict) (include "tc.v1.common.lib.metadata.allAnnotations" $rootCtx | fromYaml)) -}}
+  {{- if $pvcRetain -}}
+    {{- $_ := set $annotations "\"helm.sh/resource-policy\"" "keep" -}}
+  {{- end -}}
+  {{- with (include "tc.v1.common.lib.metadata.render" (dict "rootCtx" $rootCtx "annotations" $annotations) | trim) }}
+  annotations:
+    {{- . | nindent 4 }}
   {{- end }}
 spec:
   accessModes:
-    - {{ ( $values.accessMode | default "ReadWriteOnce" ) | quote }}
+    {{- include "tc.v1.common.lib.pvc.accessModes" (dict "rootCtx" $rootCtx "objectData" $objectData "caller" "PVC") | trim | nindent 4 }}
   resources:
     requests:
-      storage: {{ $values.size | default "999Gi" | quote }}
-  {{- with $values.spec }}
-  {{ tpl ( toYaml . ) $ | indent 2 }}
-  {{- end }}
-  {{ include "tc.common.storage.storageClassName" ( dict "persistence" $values "global" $ ) }}
-  {{- if $values.volumeName }}
-  volumeName: {{ $values.volumeName | quote }}
-  {{- end }}
-
+      storage: {{ $pvcSize }}
+  {{- with $objectData.volumeName }}
+  volumeName: {{ tpl . $rootCtx }}
+  {{- end -}}
+  {{- with (include "tc.v1.common.lib.storage.storageClassName" (dict "rootCtx" $rootCtx "objectData" $objectData "caller" "PVC") | trim) }}
+  storageClassName: {{ . }}
+  {{- end -}}
 {{- end -}}

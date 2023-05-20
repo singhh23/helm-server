@@ -1,56 +1,48 @@
-{{/* Expand the name of the chart */}}
-{{- define "tc.common.names.name" -}}
-  {{- $globalNameOverride := "" -}}
-  {{- if hasKey .Values "global" -}}
-    {{- $globalNameOverride = (default $globalNameOverride .Values.global.nameOverride) -}}
-  {{- end -}}
-  {{- default .Chart.Name (default .Values.nameOverride $globalNameOverride) | trunc 63 | trimSuffix "-" -}}
+{{/* Contains functions for generating names */}}
+
+{{/* Returns the name of the Chart */}}
+{{- define "tc.v1.common.lib.chart.names.name" -}}
+
+  {{- .Chart.Name | lower | trunc 63 | trimSuffix "-" -}}
+
 {{- end -}}
 
-{{/*
-Create a default fully qualified app name.
-We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
-If release name contains chart name it will be used as a full name.
-*/}}
-{{- define "tc.common.names.fullname" -}}
-  {{- $name := include "tc.common.names.name" . -}}
-  {{- $globalFullNameOverride := "" -}}
-  {{- if hasKey .Values "global" -}}
-    {{- $globalFullNameOverride = (default $globalFullNameOverride .Values.global.fullnameOverride) -}}
-  {{- end -}}
-  {{- if or .Values.fullnameOverride $globalFullNameOverride -}}
-    {{- $name = default .Values.fullnameOverride $globalFullNameOverride -}}
+{{/* Returns the fullname of the Chart */}}
+{{- define "tc.v1.common.lib.chart.names.fullname" -}}
+
+  {{- $name := include "tc.v1.common.lib.chart.names.name" . -}}
+
+  {{- if contains $name .Release.Name -}}
+    {{- $name = .Release.Name -}}
   {{- else -}}
-    {{- if contains $name .Release.Name -}}
-      {{- $name = .Release.Name -}}
-    {{- else -}}
-      {{- $name = printf "%s-%s" .Release.Name $name -}}
-    {{- end -}}
+    {{- $name = printf "%s-%s" .Release.Name $name -}}
   {{- end -}}
-  {{- trunc 63 $name | trimSuffix "-" -}}
+
+  {{- $name | lower | trunc 63 | trimSuffix "-" -}}
+
+{{- end -}}
+
+{{/* Returns the fqdn of the Chart */}}
+{{- define "tc.v1.common.lib.chart.names.fqdn" -}}
+
+  {{- printf "%s.%s" (include "tc.v1.common.lib.chart.names.name" .) .Release.Namespace | replace "+" "_" | trunc 63 | trimSuffix "-" -}}
+
+{{- end -}}
+
+{{/* Validates names */}}
+{{- define "tc.v1.common.lib.chart.names.validation" -}}
+
+  {{- $name := .name -}}
+
+  {{- if not (mustRegexMatch "^[a-z0-9]([a-z0-9]-?|-?[a-z0-9]){0,61}[a-z0-9]$" $name) -}}
+    {{- fail (printf "Name [%s] is not valid. Must start and end with an alphanumeric lowercase character. It can contain '-'. And must be at most 63 characters." $name) -}}
+  {{- end -}}
+
 {{- end -}}
 
 {{/* Create chart name and version as used by the chart label */}}
-{{- define "tc.common.names.chart" -}}
+{{- define "tc.v1.common.lib.chart.names.chart" -}}
+
   {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" -}}
-{{- end -}}
 
-{{/* Return the properly cased version of the controller type */}}
-{{- define "tc.common.names.controllerType" -}}
-  {{- if eq .Values.controller.type "deployment" -}}
-    {{- print "Deployment" -}}
-  {{- else if eq .Values.controller.type "daemonset" -}}
-    {{- print "DaemonSet" -}}
-  {{- else if eq .Values.controller.type "statefulset"  -}}
-    {{- print "StatefulSet" -}}
-  {{- else -}}
-    {{- fail (printf "Not a valid controller.type (%s)" .Values.controller.type) -}}
-  {{- end -}}
-{{- end -}}
-
-{{/*
-Create the "name" + "." + "namespace" fqdn
-*/}}
-{{- define "tc.common.names.fqdn" -}}
-{{- printf "%s.%s" (include "tc.common.names.fullname" .) .Release.Namespace | replace "+" "_" | trunc 63 | trimSuffix "-" -}}
 {{- end -}}

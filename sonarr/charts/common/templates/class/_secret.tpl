@@ -1,35 +1,56 @@
-{{/*
-This template serves as a blueprint for all secret objects that are created
-within the common library.
+{{/* Secret Class */}}
+{{/* Call this template:
+{{ include "tc.v1.common.class.secret" (dict "rootCtx" $ "objectData" $objectData) }}
+
+rootCtx: The root context of the chart.
+objectData:
+  name: The name of the secret.
+  labels: The labels of the secret.
+  annotations: The annotations of the secret.
+  type: The type of the secret.
+  data: The data of the secret.
 */}}
-{{- define "tc.common.class.secret" -}}
-  {{- $fullName := include "tc.common.names.fullname" . -}}
-  {{- $secretName := $fullName -}}
-  {{- $values := .Values.secret -}}
 
-  {{- if hasKey . "ObjectValues" -}}
-    {{- with .ObjectValues.secret -}}
-      {{- $values = . -}}
-    {{- end -}}
-  {{ end -}}
+{{- define "tc.v1.common.class.secret" -}}
 
-  {{- if and (hasKey $values "nameOverride") $values.nameOverride -}}
-    {{- $secretName = printf "%v-%v" $secretName $values.nameOverride -}}
+  {{- $rootCtx := .rootCtx -}}
+  {{- $objectData := .objectData -}}
+  {{- $secretType := "Opaque" -}}
+
+  {{- if eq $objectData.type "certificate" -}}
+    {{- $secretType = "kubernetes.io/tls" -}}
+  {{- else if eq $objectData.type "imagePullSecret" -}}
+    {{- $secretType = "kubernetes.io/dockerconfigjson" -}}
+  {{- else if $objectData.type -}}
+    {{- $secretType = $objectData.type -}}
   {{- end }}
 ---
 apiVersion: v1
 kind: Secret
+type: {{ $secretType }}
 metadata:
-  name: {{ $secretName }}
-  {{- with (merge ($values.labels | default dict) (include "tc.common.labels" $ | fromYaml)) }}
-  labels: {{- toYaml . | nindent 4 }}
-  {{- end }}
-  {{- with (merge ($values.annotations | default dict) (include "tc.common.annotations" $ | fromYaml)) }}
+  name: {{ $objectData.name }}
+  {{- $labels := (mustMerge ($objectData.labels | default dict) (include "tc.v1.common.lib.metadata.allLabels" $rootCtx | fromYaml)) -}}
+  {{- with (include "tc.v1.common.lib.metadata.render" (dict "rootCtx" $rootCtx "labels" $labels) | trim) }}
+  labels:
+    {{- . | nindent 4 }}
+  {{- end -}}
+  {{- $annotations := (mustMerge ($objectData.annotations | default dict) (include "tc.v1.common.lib.metadata.allAnnotations" $rootCtx | fromYaml)) -}}
+  {{- with (include "tc.v1.common.lib.metadata.render" (dict "rootCtx" $rootCtx "annotations" $annotations) | trim) }}
   annotations:
-    {{- tpl ( toYaml . ) $ | nindent 4 }}
-  {{- end }}
+    {{- . | nindent 4 }}
+  {{- end -}}
+  {{- if (mustHas $objectData.type (list "certificate" "imagePullSecret")) }}
+data:
+    {{- if eq $objectData.type "certificate" }}
+  tls.crt: {{ $objectData.data.certificate | trim | b64enc }}
+  tls.key: {{ $objectData.data.privatekey | trim | b64enc }}
+    {{- else if eq $objectData.type "imagePullSecret" }}
+  .dockerconfigjson: {{ $objectData.data | trim | b64enc }}
+    {{- end -}}
+  {{- else }}
 stringData:
-{{- with $values.data }}
-  {{- tpl (toYaml .) $ | nindent 2 }}
-{{- end }}
-{{- end }}
+    {{- tpl (toYaml $objectData.data) $rootCtx | nindent 2 }}
+    {{/* This comment is here to add a new line */}}
+  {{- end -}}
+{{- end -}}
