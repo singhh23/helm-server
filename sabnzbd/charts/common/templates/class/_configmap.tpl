@@ -1,35 +1,35 @@
-{{/*
-This template serves as a blueprint for all configMap objects that are created
-within the common library.
+{{/* Configmap Class */}}
+{{/* Call this template:
+{{ include "tc.v1.common.class.configmap" (dict "rootCtx" $ "objectData" $objectData) }}
+
+rootCtx: The root context of the chart.
+objectData:
+  name: The name of the configmap.
+  labels: The labels of the configmap.
+  annotations: The annotations of the configmap.
+  data: The data of the configmap.
 */}}
-{{- define "tc.common.class.configmap" -}}
-  {{- $fullName := include "tc.common.names.fullname" . -}}
-  {{- $configMapName := $fullName -}}
-  {{- $values := .Values.configmap -}}
 
-  {{- if hasKey . "ObjectValues" -}}
-    {{- with .ObjectValues.configmap -}}
-      {{- $values = . -}}
-    {{- end -}}
-  {{ end -}}
+{{- define "tc.v1.common.class.configmap" -}}
 
-  {{- if and (hasKey $values "nameOverride") $values.nameOverride -}}
-    {{- $configMapName = printf "%v-%v" $configMapName $values.nameOverride -}}
-  {{- end }}
+  {{- $rootCtx := .rootCtx -}}
+  {{- $objectData := .objectData }}
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ $configMapName }}
-  {{- with (merge ($values.labels | default dict) (include "tc.common.labels" $ | fromYaml)) }}
-  labels: {{- tpl ( toYaml . ) $ | nindent 4 }}
-  {{- end }}
-  {{- with (merge ($values.annotations | default dict) (include "tc.common.annotations" $ | fromYaml)) }}
+  name: {{ $objectData.name }}
+  {{- $labels := (mustMerge ($objectData.labels | default dict) (include "tc.v1.common.lib.metadata.allLabels" $rootCtx | fromYaml)) -}}
+  {{- with (include "tc.v1.common.lib.metadata.render" (dict "rootCtx" $rootCtx "labels" $labels) | trim) }}
+  labels:
+    {{- . | nindent 4 }}
+  {{- end -}}
+  {{- $annotations := (mustMerge ($objectData.annotations | default dict) (include "tc.v1.common.lib.metadata.allAnnotations" $rootCtx | fromYaml)) -}}
+  {{- with (include "tc.v1.common.lib.metadata.render" (dict "rootCtx" $rootCtx "annotations" $annotations) | trim) }}
   annotations:
-    {{- tpl ( toYaml . ) $ | nindent 4 }}
+    {{- . | nindent 4 }}
   {{- end }}
 data:
-{{- with $values.data }}
-  {{- tpl (toYaml .) $ | nindent 2 }}
-{{- end }}
-{{- end }}
+  {{- tpl (toYaml $objectData.data) $rootCtx | nindent 2 }}
+  {{/* This comment is here to add a new line */}}
+{{- end -}}

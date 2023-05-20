@@ -1,46 +1,56 @@
 {{/*
   This template generates a random password and ensures it persists across updates/edits to the chart
 */}}
-{{- define "tc.common.dependencies.clickhouse.injector" -}}
-{{- if .Values.clickhouse.enabled }}
+{{- define "tc.v1.common.dependencies.clickhouse.secret" -}}
 
-{{- $secretName := "clickhousecreds" }}
+{{- if .Values.clickhouse.enabled -}}
+  {{/* Initialize variables */}}
+  {{- $basename := include "tc.v1.common.lib.chart.names.fullname" $ -}}
+  {{- $fetchname := printf "%s-clickhousecreds" $basename -}}
+  {{- $dbprevious := lookup "v1" "Secret" .Release.Namespace $fetchname -}}
+  {{- $dbpreviousold := lookup "v1" "Secret" .Release.Namespace "clickhousecreds" -}}
+  {{- $dbPass := randAlphaNum 50 -}}
 
-{{- $dbPass := "" }}
-{{- with (lookup "v1" "Secret" .Release.Namespace $secretName) }}
-  {{- $dbPass = (index .data "clickhouse-password") | b64dec }}
-{{- else }}
-  {{- $dbPass = randAlphaNum 50 }}
-{{- end }}
+  {{/* If there are previous secrets, fetch values and decrypt them */}}
+  {{- if $dbprevious -}}
+    {{- $dbPass = (index $dbprevious.data "clickhouse-password") | b64dec -}}
+  {{- else if $dbpreviousold -}}
+    {{- $dbPass = (index $dbpreviousold.data "clickhouse-password") | b64dec -}}
+  {{- end -}}
 
-{{- $host     := printf              "%v-clickhouse"           .Release.Name }}
-{{- $portHost := printf              "%v-clickhouse:8123"      .Release.Name }}
-{{- $ping     := printf       "http://%v-clickhouse:8123/ping" .Release.Name }}
-{{- $url      := printf "http://%v:%v@%v-clickhouse:8123/%v"   .Values.clickhouse.clickhouseUsername $dbPass .Release.Name .Values.clickhouse.clickhouseDatabase }}
-{{- $jdbc     := printf    "jdbc:ch://%v-clickhouse:8123/%v"   .Release.Name }}
----
-apiVersion: v1
-kind: Secret
-metadata:
-  labels:
-    {{- include "tc.common.labels" . | nindent 4 }}
-  name: {{ $secretName }}
+  {{/* Prepare data */}}
+  {{- $dbHost := printf "%v-%v" .Release.Name "clickhouse" -}}
+  {{- $portHost := printf "%v:8123" $dbHost -}}
+  {{- $ping := printf "http://%v/ping" $portHost -}}
+  {{- $url := printf "http://%v:%v@%v/%v" .Values.clickhouse.clickhouseUsername $dbPass $portHost .Values.clickhouse.clickhouseDatabase -}}
+  {{- $jdbc := printf "jdbc:ch://%v/%v" $portHost -}}
+
+  {{/* Append some values to clickhouse.creds, so apps using the dep, can use them */}}
+  {{- $_ := set .Values.clickhouse.creds "plain" ($dbHost | quote) -}}
+  {{- $_ := set .Values.clickhouse.creds "plainhost" ($dbHost | quote) -}}
+  {{- $_ := set .Values.clickhouse.creds "clickhousePassword" ($dbPass | quote) -}}
+  {{- $_ := set .Values.clickhouse.creds "plainport" ($portHost | quote) -}}
+  {{- $_ := set .Values.clickhouse.creds "plainporthost" ($portHost | quote) -}}
+  {{- $_ := set .Values.clickhouse.creds "ping" ($ping | quote) -}}
+  {{- $_ := set .Values.clickhouse.creds "complete" ($url | quote) -}}
+  {{- $_ := set .Values.clickhouse.creds "jdbc" ($jdbc | quote) -}}
+
+{{/* Create the secret (Comment also plays a role on correct formatting) */}}
+enabled: true
+expandObjectName: false
 data:
-  clickhouse-password: {{ $dbPass | b64enc | quote }}
-  plainhost:           {{ $host | b64enc | quote }}
-  plainporthost:       {{ $portHost | b64enc | quote }}
-  ping:                {{ $ping | b64enc | quote }}
-  url:                 {{ $url | b64enc | quote }}
-  jdbc:                {{ $jdbc | b64enc | quote }}
+  clickhouse-password: {{ $dbPass }}
+  plainhost: {{ $dbHost }}
+  plainporthost: {{ $portHost }}
+  ping: {{ $ping }}
+  url: {{ $url }}
+  jdbc: {{ $jdbc }}
+  {{- end -}}
+{{- end -}}
 
-{{- $_ := set .Values.clickhouse     "clickhousePassword" ($dbPass | quote) }}
-{{- $_ := set .Values.clickhouse.url "plain"              ($host | quote) }}
-{{- $_ := set .Values.clickhouse.url "plainhost"          ($host | quote) }}
-{{- $_ := set .Values.clickhouse.url "plainport"          ($portHost | quote) }}
-{{- $_ := set .Values.clickhouse.url "plainporthost"      ($portHost | quote) }}
-{{- $_ := set .Values.clickhouse.url "ping"               ($ping | quote) }}
-{{- $_ := set .Values.clickhouse.url "complete"           ($url | quote) }}
-{{- $_ := set .Values.clickhouse.url "jdbc"               ($jdbc | quote) }}
-
-{{- end }}
+{{- define "tc.v1.common.dependencies.clickhouse.injector" -}}
+  {{- $secret := include "tc.v1.common.dependencies.clickhouse.secret" . | fromYaml -}}
+  {{- if $secret -}}
+    {{- $_ := set .Values.secret ( printf "%s-%s" .Release.Name "clickhousecreds" ) $secret -}}
+  {{- end -}}
 {{- end -}}

@@ -1,38 +1,52 @@
 {{/*
 This template generates a random password and ensures it persists across updates/edits to the chart
 */}}
-{{- define "tc.common.dependencies.redis.injector" -}}
-{{- $pghost := printf "%v-%v" .Release.Name "redis" }}
+{{- define "tc.v1.common.dependencies.redis.secret" -}}
 
-{{- if .Values.redis.enabled }}
----
-apiVersion: v1
-kind: Secret
-metadata:
-  labels:
-    {{- include "tc.common.labels" . | nindent 4 }}
-  name: rediscreds
-{{- $dbprevious := lookup "v1" "Secret" .Release.Namespace "rediscreds" }}
-{{- $dbPass := "" }}
-{{- $dbIndex := default "0" .Values.redis.redisDatabase }}
+{{- if .Values.redis.enabled -}}
+  {{/* Initialize variables */}}
+  {{- $basename := include "tc.v1.common.lib.chart.names.fullname" $ -}}
+  {{- $fetchname := printf "%s-rediscreds" $basename -}}
+  {{- $dbprevious := lookup "v1" "Secret" .Release.Namespace $fetchname -}}
+  {{- $dbPass := randAlphaNum 50 -}}
+  {{- $dbIndex := .Values.redis.redisDatabase | default "0" -}}
+
+  {{/* If there are previous secrets, fetch values and decrypt them */}}
+  {{- if $dbprevious -}}
+    {{- $dbPass = (index $dbprevious.data "redis-password") | b64dec -}}
+  {{- end -}}
+
+  {{/* Prepare data */}}
+  {{- $dbHost := printf "%v-%v" .Release.Name "redis" -}}
+  {{- $portHost := printf "%v:6379" $dbHost -}}
+  {{- $url := printf "redis://%v:%v@%v/%v" .Values.redis.redisUsername $dbPass $portHost $dbIndex -}}
+  {{- $hostPass := printf "%v:%v@%v" .Values.redis.redisUsername $dbPass $dbHost -}}
+
+  {{/* Append some values to redis.creds, so apps using the dep, can use them */}}
+  {{- $_ := set .Values.redis.creds "redisPassword" ($dbPass | quote) -}}
+  {{- $_ := set .Values.redis.creds "plain" ($dbHost | quote) -}}
+  {{- $_ := set .Values.redis.creds "plainhost" ($dbHost | quote) -}}
+  {{- $_ := set .Values.redis.creds "plainport" ($portHost | quote) -}}
+  {{- $_ := set .Values.redis.creds "plainporthost" ($portHost | quote) -}}
+  {{- $_ := set .Values.redis.creds "plainhostpass" ($hostPass | quote) -}}
+  {{- $_ := set .Values.redis.creds "url" ($url | quote) -}}
+
+{{/* Create the secret (Comment also plays a role on correct formatting) */}}
+enabled: true
+expandObjectName: false
 data:
-{{- if $dbprevious }}
-  {{- $dbPass = ( index $dbprevious.data "redis-password" ) | b64dec  }}
-  redis-password: {{ ( index $dbprevious.data "redis-password" ) }}
-{{- else }}
-  {{- $dbPass = randAlphaNum 50 }}
-  redis-password: {{ $dbPass | b64enc | quote }}
-{{- end }}
-  url: {{ ( printf "redis://%v:%v@%v-redis:6379/%v" .Values.redis.redisUsername $dbPass .Release.Name $dbIndex ) | b64enc | quote }}
-  plainhostpass: {{ ( printf "%v:%v@%v-redis" .Values.redis.redisUsername $dbPass .Release.Name ) | b64enc | quote }}
-  plainporthost: {{ ( printf "%v-%v:6379" .Release.Name "redis" ) | b64enc | quote }}
-  plainhost: {{ ( printf "%v-%v" .Release.Name "redis" ) | b64enc | quote }}
-type: Opaque
-{{- $_ := set .Values.redis "redisPassword" ( $dbPass | quote ) }}
-{{- $_ := set .Values.redis.url "plain" ( ( printf "%v-%v" .Release.Name "redis" ) | quote ) }}
-{{- $_ := set .Values.redis.url "plainhost" ( ( printf "%v-%v" .Release.Name "redis" ) | quote ) }}
-{{- $_ := set .Values.redis.url "plainport" ( ( printf "%v-%v:6379" .Release.Name "redis" ) | quote ) }}
-{{- $_ := set .Values.redis.url "plainporthost" ( ( printf "%v-%v:6379" .Release.Name "redis" ) | quote ) }}
+  redis-password: {{ $dbPass }}
+  plain: {{ $dbHost }}
+  url: {{ $url }}
+  plainhostpass: {{ $hostPass }}
+  plainporthost: {{ $portHost }}
+  plainhost: {{ $dbHost }}
+  {{- end -}}
+{{- end -}}
 
-{{- end }}
+{{- define "tc.v1.common.dependencies.redis.injector" -}}
+  {{- $secret := include "tc.v1.common.dependencies.redis.secret" . | fromYaml -}}
+  {{- if $secret -}}
+    {{- $_ := set .Values.secret (printf "%s-%s" .Release.Name "rediscreds") $secret -}}
+  {{- end -}}
 {{- end -}}

@@ -1,134 +1,114 @@
-{{/*
-This template serves as a blueprint for all Service objects that are created
-within the common library.
-*/}}
-{{- define "tc.common.class.service" -}}
-{{- $values := .Values.service -}}
-{{- if hasKey . "ObjectValues" -}}
-  {{- with .ObjectValues.service -}}
-    {{- $values = . -}}
-  {{- end -}}
-{{ end -}}
+{{/* Service Class */}}
+{{/* Call this template:
+{{ include "tc.v1.common.class.service" (dict "rootCtx" $ "objectData" $objectData) }}
 
-{{- $serviceName := include "tc.common.names.fullname" . -}}
-{{- if and (hasKey $values "nameOverride") $values.nameOverride -}}
-  {{- $serviceName = printf "%v-%v" $serviceName $values.nameOverride -}}
-{{ end -}}
-{{- $svcType := $values.type | default "" -}}
-{{- $primaryPort := get $values.ports (include "tc.common.lib.util.service.ports.primary" (dict "values" $values)) }}
+rootCtx: The root context of the chart.
+objectData: The service data, that will be used to render the Service object.
+*/}}
+
+{{- define "tc.v1.common.class.service" -}}
+
+  {{- $rootCtx := .rootCtx -}}
+  {{- $objectData := .objectData -}}
+
+  {{- $svcType := $objectData.type | default $rootCtx.Values.fallbackDefaults.serviceType -}}
+
+  {{/* Init variables */}}
+  {{- $hasHTTPSPort := false -}}
+  {{- $hasHostPort := false -}}
+  {{- $hostNetwork := false -}}
+  {{- $podValues := dict -}}
+
+  {{- range $portName, $port := $objectData.ports -}}
+    {{- if $port.enabled -}}
+      {{- if eq (tpl ($port.protocol | default "") $rootCtx) "https" -}}
+        {{- $hasHTTPSPort = true -}}
+      {{- end -}}
+
+      {{- if and (hasKey $port "hostPort") $port.hostPort -}}
+        {{- $hasHostPort = true -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+
+  {{- $specialTypes := (list "ExternalName" "ExternalIP") -}}
+  {{/* External Name / External IP does not rely on any pod values */}}
+  {{- if not (mustHas $svcType $specialTypes) -}}
+    {{/* Get Pod Values based on the selector (or the absence of it) */}}
+    {{- $podValues = fromJson (include "tc.v1.common.lib.helpers.getSelectedPodValues" (dict "rootCtx" $rootCtx "objectData" $objectData "caller" "Service")) -}}
+
+    {{- if $podValues -}}
+      {{/* Get Pod hostNetwork configuration */}}
+      {{- $hostNetwork = include "tc.v1.common.lib.pod.hostNetwork" (dict "rootCtx" $rootCtx "objectData" $podValues) -}}
+      {{/* When hostNetwork is set on the pod, force ClusterIP, so services wont try to bind the same ports on the host */}}
+      {{- if or (and (kindIs "bool" $hostNetwork) $hostNetwork) (and (kindIs "string" $hostNetwork) (eq $hostNetwork "true")) -}}
+        {{- $svcType = "ClusterIP" -}}
+      {{- end -}}
+    {{- end -}}
+
+    {{/* When hostPort is defined, force ClusterIP aswell */}}
+    {{- if $hasHostPort -}}
+      {{- $svcType = "ClusterIP" -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $_ := set $objectData "type" $svcType  }}
+
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ $serviceName }}
-  {{- with (merge ($values.labels | default dict) (include "tc.common.labels" $ | fromYaml)) }}
-  labels: {{- tpl ( toYaml . ) $ | nindent 4 }}
-  {{- end }}
+  name: {{ $objectData.name }}
+  {{- $labels := (mustMerge ($objectData.labels | default dict) (include "tc.v1.common.lib.metadata.allLabels" $rootCtx | fromYaml)
+                            (include "tc.v1.common.lib.metadata.selectorLabels" (dict "rootCtx" $rootCtx "objectType" "service" "objectName" $objectData.shortName) | fromYaml)) -}}
+  {{- with (include "tc.v1.common.lib.metadata.render" (dict "rootCtx" $rootCtx "labels" $labels) | trim) }}
+  labels:
+    {{- . | nindent 4 }}
+  {{- end -}}
+  {{- $annotations := (mustMerge ($objectData.annotations | default dict) (include "tc.v1.common.lib.metadata.allAnnotations" $rootCtx | fromYaml)) -}}
+  {{- if eq $objectData.type "LoadBalancer" -}}
+    {{- include "tc.v1.common.lib.service.metalLBAnnotations" (dict "rootCtx" $rootCtx "objectData" $objectData "annotations" $annotations) -}}
+  {{- end -}}
+  {{- if $hasHTTPSPort -}}
+    {{- include "tc.v1.common.lib.service.traefikAnnotations" (dict "rootCtx" $rootCtx "annotations" $annotations) -}}
+  {{- end -}}
+  {{- with (include "tc.v1.common.lib.metadata.render" (dict "rootCtx" $rootCtx "annotations" $annotations) | trim) }}
   annotations:
-  {{- if eq ( $primaryPort.protocol | default "" ) "HTTPS" }}
-    traefik.ingress.kubernetes.io/service.serversscheme: https
-  {{- end }}
-  {{- if eq ( $svcType | default "" ) "LoadBalancer" }}
-    metallb.universe.tf/allow-shared-ip: {{ include "tc.common.names.fullname" . }}
-  {{- end }}
-  {{- with (merge ($values.annotations | default dict) (include "tc.common.annotations" $ | fromYaml)) }}
-    {{- tpl ( toYaml . ) $ | nindent 4 }}
+    {{- . | nindent 4 }}
   {{- end }}
 spec:
-  {{- if (or (eq $svcType "ClusterIP") (empty $svcType)) }}
-  type: ClusterIP
-  {{- if $values.clusterIP }}
-  clusterIP: {{ $values.clusterIP }}
-  {{end}}
-  {{- else if eq $svcType "ExternalName" }}
-  type: {{ $svcType }}
-  externalName: {{ $values.externalName }}
-  {{- else if eq $svcType "ExternalIP" }}
-  {{- else if eq $svcType "LoadBalancer" }}
-  type: {{ $svcType }}
-  {{- if $values.loadBalancerIP }}
-  loadBalancerIP: {{ $values.loadBalancerIP }}
-  {{- end }}
-  {{- if $values.loadBalancerSourceRanges }}
-  loadBalancerSourceRanges:
-    {{ toYaml $values.loadBalancerSourceRanges | nindent 4 }}
+  {{- if eq $objectData.type "ClusterIP" -}}
+    {{- include "tc.v1.common.lib.service.spec.clusterIP" (dict "rootCtx" $rootCtx "objectData" $objectData) | trim | nindent 2 -}}
+  {{- else if eq $objectData.type "LoadBalancer" -}}
+    {{- include "tc.v1.common.lib.service.spec.loadBalancer" (dict "rootCtx" $rootCtx "objectData" $objectData) | trim | nindent 2 -}}
+  {{- else if eq $objectData.type "NodePort" -}}
+    {{- include "tc.v1.common.lib.service.spec.nodePort" (dict "rootCtx" $rootCtx "objectData" $objectData) | trim | nindent 2 -}}
+  {{- else if eq $objectData.type "ExternalName" -}}
+    {{- include "tc.v1.common.lib.service.spec.externalName" (dict "rootCtx" $rootCtx "objectData" $objectData) | trim | nindent 2 -}}
+  {{- else if eq $objectData.type "ExternalIP" -}}
+    {{- include "tc.v1.common.lib.service.spec.externalIP" (dict "rootCtx" $rootCtx "objectData" $objectData) | trim | nindent 2 -}}
   {{- end -}}
-  {{- else }}
-  type: {{ $svcType }}
-  {{- end }}
-  {{- if $values.externalTrafficPolicy }}
-  externalTrafficPolicy: {{ $values.externalTrafficPolicy }}
-  {{- end }}
-  {{- if $values.sessionAffinity }}
-  sessionAffinity: {{ $values.sessionAffinity }}
-  {{- if $values.sessionAffinityConfig }}
-  sessionAffinityConfig:
-    {{ toYaml $values.sessionAffinityConfig | nindent 4 }}
-  {{- end -}}
-  {{- end }}
-  {{- with $values.externalIPs }}
-  externalIPs:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
-  {{- if $values.publishNotReadyAddresses }}
-  publishNotReadyAddresses: {{ $values.publishNotReadyAddresses }}
-  {{- end }}
-  {{- if (and ($values.ipFamilyPolicy) (ne $svcType "ExternalName")) }}
-  ipFamilyPolicy: {{ $values.ipFamilyPolicy }}
-  {{- end }}
-  {{ if ne $svcType "ExternalName" }}
-  {{- with $values.ipFamilies }}
-  ipFamilies:
-    {{ toYaml . | nindent 4 }}
-  {{- end }}
-  {{- end }}
+  {{- with (include "tc.v1.common.lib.service.ports" (dict "rootCtx" $rootCtx "objectData" $objectData) | trim) }}
   ports:
-  {{- range $name, $port := $values.ports }}
-  {{- if $port.enabled }}
-  - port: {{ $port.port }}
-    targetPort: {{ $port.targetPort | default $name }}
-    {{- if $port.protocol }}
-    {{- if or ( eq $port.protocol "HTTP" ) ( eq $port.protocol "HTTPS" ) ( eq $port.protocol "TCP" ) }}
-    protocol: TCP
-    {{- else }}
-    protocol: {{ $port.protocol }}
-    {{- end }}
-    {{- else }}
-    protocol: TCP
-    {{- end }}
-    name: {{ $name }}
-    {{- if (and (eq $svcType "NodePort") (not (empty $port.nodePort))) }}
-    nodePort: {{ $port.nodePort }}
-    {{ end }}
-  {{- end }}
-  {{- end }}
-  {{- if and ( ne $svcType "ExternalName" ) ( ne $svcType "ExternalIP" )}}
+    {{- . | nindent 4 }}
+  {{- end -}}
+  {{- if not (mustHas $objectData.type $specialTypes) }}
   selector:
-  {{- if $values.selector }}
-  {{- with $values.selector }}
-    {{- tpl (toYaml .) $ | nindent 4 }}
-  {{- end }}
-  {{- else }}
-    {{- include "tc.common.labels.selectorLabels" . | nindent 4 }}
-  {{- end }}
-  {{- end }}
-{{- if eq $svcType "ExternalIP" }}
----
-apiVersion: v1
-kind: Endpoints
-metadata:
-  name: {{ $serviceName }}
-  labels:
-    {{- include "tc.common.labels" $ | nindent 4 }}
-subsets:
-  - addresses:
-      - ip: {{ $values.externalIP }}
-    ports:
-    {{- range $name, $port := $values.ports }}
-    {{- if $port.enabled }}
-      - port: {{ $port.port | default 80 }}
-        name: {{ $name }}
+    {{- if $objectData.selectorLabels }}
+    {{- tpl ( toYaml $objectData.selectorLabels) $rootCtx | nindent 4 }}
+    {{- else }}
+    {{- include "tc.v1.common.lib.metadata.selectorLabels" (dict "rootCtx" $rootCtx "objectType" "pod" "objectName" $podValues.shortName) | trim | nindent 4 -}}
     {{- end }}
-    {{- end }}
-{{- end }}
-{{- end }}
+  {{- end -}}
+  {{- if eq $objectData.type "ExternalIP" -}}
+    {{- $useSlice := true -}}
+    {{- if kindIs "bool" $objectData.useSlice -}}
+      {{- $useSlice = $objectData.useSlice -}}
+    {{- end -}}
+
+    {{- if $useSlice -}}
+      {{- include "tc.v1.common.class.endpointSlice" (dict "rootCtx" $rootCtx "objectData" $objectData) | trim | nindent 0 }}
+    {{- else -}}
+      {{- include "tc.v1.common.class.endpoint" (dict "rootCtx" $rootCtx "objectData" $objectData) | trim | nindent 0 }}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
