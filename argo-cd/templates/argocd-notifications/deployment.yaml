@@ -9,13 +9,16 @@ metadata:
     {{- end }}
   {{- end }}
   name: {{ include "argo-cd.notifications.fullname" . }}
+  namespace: {{ .Release.Namespace | quote }}
   labels:
     {{- include "argo-cd.labels" (dict "context" . "component" .Values.notifications.name "name" .Values.notifications.name) | nindent 4 }}
 spec:
   replicas: 1
   revisionHistoryLimit: {{ .Values.global.revisionHistoryLimit }}
+  {{- with include "argo-cd.strategy" (mergeOverwrite (deepCopy .Values.global.deploymentStrategy) .Values.notifications.deploymentStrategy) }}
   strategy:
-    type: Recreate
+    {{- trim . | nindent 4 }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "argo-cd.selectorLabels" (dict "context" . "name" .Values.notifications.name) | nindent 6 }}
@@ -53,8 +56,8 @@ spec:
         - name: {{ .Values.notifications.name }}
           image: {{ default .Values.global.image.repository .Values.notifications.image.repository }}:{{ default (include "argo-cd.defaultTag" .) .Values.notifications.image.tag }}
           imagePullPolicy: {{ default .Values.global.image.imagePullPolicy .Values.notifications.image.imagePullPolicy }}
-          command:
-            - argocd-notifications
+          args:
+            - /usr/local/bin/argocd-notifications
             - --metrics-port={{ .Values.notifications.containerPorts.metrics }}
             - --loglevel={{ default .Values.global.logging.level .Values.notifications.logLevel }}
             - --logformat={{ default .Values.global.logging.format .Values.notifications.logFormat }}
