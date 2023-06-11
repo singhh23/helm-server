@@ -22,14 +22,28 @@ persistence:
   config:
     enabled: true
     mountPath: "/config"
+    existingClaim: jellyfin-config-pvc
+    winPath: /c/jellyfin/config
   cache:
     enabled: true
     mountPath: "/cache"
     type: "emptyDir"
+    existingClaim: jellyfin-cache-pvc
+    winPath: /c/jellyfin/cache
   transcode:
     enabled: true
     mountPath: "/config/transcodes"
     type: "emptyDir"
+  sonarr:
+    enabled: true
+    mountPath: "/sonarr"
+    existingClaim: jellyfin-son-pvc
+    winPath: /c/sonarr
+  radarr:
+    enabled: true
+    mountPath: "/radarr"
+    existingClaim: jellyfin-rad-pvc
+    winPath: /c/radarr
 
 portal:
   enabled: true
