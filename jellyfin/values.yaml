@@ -44,6 +44,12 @@ persistence:
     mountPath: "/radarr"
     existingClaim: jellyfin-rad-pvc
     winPath: /c/radarr
+  webdav:
+    enabled: true
+    mountPath: "/webdav"
+    existingClaim: jellyfin-dav-pvc
+    davUrl: 192.168.4.3
+    davPath: /volume1/video
 
 portal:
   enabled: true
