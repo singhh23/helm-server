@@ -11,10 +11,12 @@ env:
 
 service:
   main:
+    type: NodePort
     ports:
       main:
         port: 8096
         targetPort: 8096
+        nodePort: 30445
 
 persistence:
   config:
