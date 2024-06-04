@@ -4,6 +4,8 @@ metadata:
   name: sonarr-test
   namespace: son-test
 spec:
+  sourceNamespaces: 
+  - son-test
   project: default
   destination:
     server: https://kubernetes.default.svc
