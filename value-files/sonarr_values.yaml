@@ -85,7 +85,7 @@ persistence:
     enabled: true
     type: pvc
     pvNames: son-sab
-    existingClaim: sab-pvc
+    existingClaim: son-sab-pvc
     winPath: /c/sabnzbd
     targetSelector:
       main:
