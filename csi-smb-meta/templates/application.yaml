@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: csi-smb
+  namespace: kube-system
+spec:
+  project: default
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  sources:
+    - repoURL: https://github.com/kubernetes-csi/csi-driver-smb.git
+      path: charts/v1.9.0/csi-driver-smb
+      targetRevision: master
+      helm:
+        valueFiles:
+          - $valuesRepo/value-files/smb_values.yaml
+    - repoURL: git@github.com:singhh23/helm-server.git
+      targetRevision: master
+      ref: valuesRepo
