@@ -1,7 +1,7 @@
 image:
-  repository: ghcr.io/onedr0p/sabnzbd
+  repository: ghcr.io/onedr0p/sonarr
   pullPolicy: IfNotPresent
-  tag: 4.3.2@sha256:8e70a877c77805dfe93ce30a8da3362fbddf221ef806951d4e4634bb80dc87b5
+  tag: 4.0.5.1710@sha256:ad8a863b0228d9c418a3eabe9530446d83d5ecec96afc161211c21bd9262b7ee
 exportarrImage:
   repository: ghcr.io/onedr0p/exportarr
   pullPolicy: IfNotPresent
@@ -28,9 +28,22 @@ workload:
     podSpec:
       containers:
         main:
+          probes:
+            liveness:
+              enabled: true
+              type: http
+              path: /ping
+            readiness:
+              enabled: true
+              type: http
+              path: /ping
+            startup:
+              enabled: true
+              type: http
+              path: /ping
           env:
-            SABNZBD__HOST_WHITELIST_ENTRIES: ""
-            SABNZBD__PORT: "{{ .Values.service.main.ports.main.targetPort }}"
+            SONARR__PORT: "{{ .Values.service.main.ports.main.targetPort }}"
+            SONARR__AUTHENTICATION_METHOD: ""
   exportarr:
     enabled: "{{ .Values.metrics.main.enabled }}"
     type: Deployment
@@ -43,7 +56,7 @@ workload:
           enabled: true
           imageSelector: exportarrImage
           args:
-            - sabnzbd
+            - sonarr
           probes:
             liveness:
               enabled: true
@@ -64,8 +77,11 @@ workload:
             INTERFACE: 0.0.0.0
             PORT: "{{ .Values.service.metrics.ports.metrics.port }}"
             URL: '{{ printf "http://%v:%v" (include "tc.v1.common.lib.chart.names.fullname" $) .Values.service.main.ports.main.port }}'
-            APIKEY: "{{ .Values.metrics.main.apiKey }}"
-
+            # additional metrics (slow)
+            # ENABLE_ADDITIONAL_METRICS: false
+            # enable gathering unknown queue items
+            # ENABLE_UNKNOWN_QUEUE_ITEMS: false
+            CONFIG: "/config/config.xml"
 persistence:
   config:
     enabled: true
@@ -93,15 +109,15 @@ persistence:
           mountPath: "/sabnzbd"
 metrics:
   main:
-    enabled: false
+    enabled: true
     type: "servicemonitor"
     endpoints:
       - port: metrics
         path: /metrics
     targetSelector: metrics
-    # Required for exportarr
-    apiKey: ""
-
+    prometheusRule:
+      enabled: false
 portal:
   open:
     enabled: true
+updated: true
