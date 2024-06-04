@@ -1,20 +1,18 @@
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: argocd-app
-  namespace: argocd
-spec:
-  project: default
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: default
-  sources:
-    - repoURL: https://github.com/singhh23/helm-server.git
-      targetRevision: master
-      ref: valuesRepo
-    - repoURL: https://github.com/argoproj/argo-helm.git
-      path: charts/argo-cd
-      targetRevision: main
-      helm:
-        valueFiles:
-          - $valuesRepo/argo-cd-multi/values.yaml
+apiVersion: v2
+appVersion: 1.0.0
+description: argocd
+home: https://github.com/argoproj/argo-helm
+icon: https://argo-cd.readthedocs.io/en/stable/assets/logo.png
+keywords:
+- argoproj
+- argocd
+- gitops
+kubeVersion: '>=1.22.0-0'
+maintainers:
+- name: argoproj
+  url: https://argoproj.github.io/
+name: argo-cd
+sources:
+- https://github.com/argoproj/argo-helm/tree/main/charts/argo-cd
+- https://github.com/argoproj/argo-cd
+version: 1.0.0
