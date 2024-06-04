@@ -9,10 +9,10 @@ spec:
     server: https://kubernetes.default.svc
     namespace: argocd
   sources:
-    - repoURL: https://github.com/singhh23/helm-server.git
+    - repoURL: git@github.com:singhh23/helm-server.git
       targetRevision: master
       ref: valuesRepo
-    - repoURL: https://github.com/singhh23/helm-server.git
+    - repoURL: git@github.com:singhh23/helm-server.git
       path: sonarr-pvc
       targetRevision: master
       helm:
