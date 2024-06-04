@@ -20,7 +20,7 @@ spec:
           - $valuesRepo/value-files/sonarr_values.yaml
     - repoURL: https://github.com/truecharts/charts.git
       path: charts/stable/sonarr
-      targetRevision: main
+      targetRevision: master
       helm:
         valueFiles:
           - $valuesRepo/value-files/sonarr_values.yaml
