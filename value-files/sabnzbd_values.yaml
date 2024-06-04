@@ -30,7 +30,7 @@ workload:
         main:
           env:
             SABNZBD__HOST_WHITELIST_ENTRIES: ""
-            SABNZBD__PORT: "{{ .Values.service.main.ports.main.port }}"
+            SABNZBD__PORT: "{{ .Values.service.main.ports.main.targetPort }}"
   exportarr:
     enabled: "{{ .Values.metrics.main.enabled }}"
     type: Deployment
@@ -67,6 +67,7 @@ workload:
             APIKEY: "{{ .Values.metrics.main.apiKey }}"
 persistence:
   config:
+    type: pvc
     enabled: true
     targetSelector:
       main:
