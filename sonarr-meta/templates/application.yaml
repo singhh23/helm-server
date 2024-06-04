@@ -2,14 +2,12 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: sonarr-test
-  namespace: son-test
+  namespace: argocd
 spec:
-  sourceNamespaces: 
-  - son-test
   project: default
   destination:
     server: https://kubernetes.default.svc
-    namespace: son-test
+    namespace: argocd
   sources:
     - repoURL: https://github.com/singhh23/helm-server.git
       targetRevision: master
