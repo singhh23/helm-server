@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: sonarr-test
+  name: sonarr
   namespace: argocd
 spec:
   project: default
