@@ -7,9 +7,9 @@ spec:
   project: default
   destination:
     server: https://kubernetes.default.svc
-    namespace: default
+    namespace: argocd
   sources:
-    - repoURL: https://github.com/singhh23/helm-server.git
+    - repoURL: git@github.com:singhh23/helm-server.git
       targetRevision: master
       ref: valuesRepo
     - repoURL: https://github.com/argoproj/argo-helm.git
@@ -17,4 +17,4 @@ spec:
       targetRevision: main
       helm:
         valueFiles:
-          - $valuesRepo/argo-cd-multi/values.yaml
+          - $valuesRepo/value-files/argocd_values.yaml
