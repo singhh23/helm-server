@@ -1,7 +1,11 @@
 image:
-  repository: tccr.io/truecharts/sonarr
+  repository: ghcr.io/onedr0p/sabnzbd
   pullPolicy: IfNotPresent
-  tag: 3.0.10.1567@sha256:f420ed0b9341a5241c2278d51a7f4f59635a9c3a5670ac893542fa59052e61b2
+  tag: 4.3.2@sha256:8e70a877c77805dfe93ce30a8da3362fbddf221ef806951d4e4634bb80dc87b5
+exportarrImage:
+  repository: ghcr.io/onedr0p/exportarr
+  pullPolicy: IfNotPresent
+  tag: v2.0.1@sha256:727e7bc8f2f0934a2117978c59f4476b954018b849a010ea6cfb380bd6539644
 service:
   main:
     type: NodePort
@@ -10,61 +14,90 @@ service:
         port: 8989
         targetPort: 8989
         nodePort: 30448
-
-persistence:
-  config:
+  metrics:
     enabled: true
-    mountPath: "/config"
-    existingClaim: sonarr-pvc
-    winPath: /c/sonarr
-  sabnzbd:
-    enabled: true
-    mountPath: "/sabnzbd"
-    existingClaim: sonarr-sab-pvc
-    winPath: /c/sabnzbd
-
-# might be supported on sonarr v4 upon released
-cnpg:
-  main:
-    enabled: false
-
-    database: sonarr
-    user: sonarr
-
-portal:
-  open:
-    enabled: true
-
+    type: ClusterIP
+    targetSelector: exportarr
+    ports:
+      metrics:
+        enabled: true
+        port: 8990
+        targetSelector: exportarr
 workload:
   main:
     podSpec:
       containers:
         main:
+          env:
+            SABNZBD__HOST_WHITELIST_ENTRIES: ""
+            SABNZBD__PORT: "{{ .Values.service.main.ports.main.port }}"
+  exportarr:
+    enabled: "{{ .Values.metrics.main.enabled }}"
+    type: Deployment
+    strategy: RollingUpdate
+    replicas: 1
+    podSpec:
+      containers:
+        exportarr:
+          primary: true
+          enabled: true
+          imageSelector: exportarrImage
+          args:
+            - sabnzbd
           probes:
             liveness:
               enabled: true
               type: http
-              path: /ping
+              path: /healthz
+              port: "{{ .Values.service.metrics.ports.metrics.port }}"
             readiness:
               enabled: true
               type: http
-              path: /ping
+              path: /healthz
+              port: "{{ .Values.service.metrics.ports.metrics.port }}"
             startup:
               enabled: true
               type: http
-              path: /ping
+              path: /healthz
+              port: "{{ .Values.service.metrics.ports.metrics.port }}"
           env:
-            SONARR__PORT: "{{ .Values.service.main.ports.main.port }}"
-            SONARR__AUTHENTICATION_METHOD: ""
-            # Enable postgres if v4 of sonarr supports it.
-            # SONARR__POSTGRES_PORT: 5432
-            # SONARR__POSTGRES_USER: "{{ .Values.cnpg.main.user }}"
-            # SONARR__POSTGRES_MAIN_DB: "{{ .Values.cnpg.main.database }}"
-            # SONARR__POSTGRES_HOST:
-            #   secretKeyRef:
-            #     name: cnpg-main-urls
-            #     key: host
-            # SONARR__POSTGRES_PASSWORD:
-            #   secretKeyRef:
-            #     name: cnpg-main-urls
-            #     key: password
+            INTERFACE: 0.0.0.0
+            PORT: "{{ .Values.service.metrics.ports.metrics.port }}"
+            URL: '{{ printf "http://%v:%v" (include "tc.v1.common.lib.chart.names.fullname" $) .Values.service.main.ports.main.port }}'
+            APIKEY: "{{ .Values.metrics.main.apiKey }}"
+
+persistence:
+  config:
+    enabled: true
+    targetSelector:
+      main:
+        main:
+          mountPath: "/config"
+          pvNames: son
+          winPath: /c/sonarr
+      exportarr:
+        exportarr:
+          mountPath: /config
+          readOnly: true
+  sabnzbd:
+    enabled: true
+    targetSelector:
+      main:
+        main:
+          mountPath: "/sabnzbd"
+          pvNames: sab
+          winPath: /c/sabnzbd
+metrics:
+  main:
+    enabled: false
+    type: "servicemonitor"
+    endpoints:
+      - port: metrics
+        path: /metrics
+    targetSelector: metrics
+    # Required for exportarr
+    apiKey: ""
+
+portal:
+  open:
+    enabled: true

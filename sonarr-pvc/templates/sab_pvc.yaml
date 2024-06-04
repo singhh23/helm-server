@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ .Values.persistence.sabnzbd.existingClaim }}
+  name: {{ .Values.persistence.sabnzbd.targetSelector.main.main.pvNames }}-pvc
 spec:
   storageClassName: hostpath
   accessModes:

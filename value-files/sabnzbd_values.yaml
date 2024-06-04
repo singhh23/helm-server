@@ -72,7 +72,7 @@ persistence:
       main:
         main:
           mountPath: "/config"
-          existingClaim: sabnzbd-pvc
+          pvNames: sab
           winPath: /c/sabnzbd
       exportarr:
         exportarr:
