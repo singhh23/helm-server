@@ -17,10 +17,10 @@ spec:
       targetRevision: master
       helm:
         valueFiles:
-          - $valuesRepo/value-files/sab_values.yaml
+          - $valuesRepo/value-files/sonarr_values.yaml
     - repoURL: https://github.com/truecharts/charts.git
       path: charts/stable/sonarr
       targetRevision: main
       helm:
         valueFiles:
-          - $valuesRepo/value-files/sab_values.yaml
+          - $valuesRepo/value-files/sonarr_values.yaml
