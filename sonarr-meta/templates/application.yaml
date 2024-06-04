@@ -7,7 +7,7 @@ spec:
   project: default
   destination:
     server: https://kubernetes.default.svc
-    namespace: default
+    namespace: son-test
   sources:
     - repoURL: https://github.com/singhh23/helm-server.git
       targetRevision: master
