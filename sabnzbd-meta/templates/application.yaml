@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: sonarr
+  name: sabnzbd
   namespace: argocd
 spec:
   project: default
@@ -17,16 +17,10 @@ spec:
       targetRevision: master
       helm:
         valueFiles:
-          - $valuesRepo/value-files/sonarr_values.yaml
-    - repoURL: git@github.com:singhh23/helm-server.git
-      path: sonarr-pvc
-      targetRevision: master
-      helm:
-        valueFiles:
-          - $valuesRepo/value-files/sonarr_values.yaml
+          - $valuesRepo/value-files/sabnzbd_values.yaml
     - repoURL: https://github.com/truecharts/charts.git
-      path: charts/stable/sonarr
+      path: charts/stable/sabnzbd
       targetRevision: master
       helm:
         valueFiles:
-          - $valuesRepo/value-files/sonarr_values.yaml
+          - $valuesRepo/value-files/sabnzbd_values.yaml
