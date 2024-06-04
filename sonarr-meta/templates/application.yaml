@@ -1,0 +1,26 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: sonarr-test
+  namespace: son-test
+spec:
+  project: default
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  sources:
+    - repoURL: https://github.com/singhh23/helm-server.git
+      targetRevision: master
+      ref: valuesRepo
+    - repoURL: https://github.com/singhh23/helm-server.git
+      path: sonarr-pvc
+      targetRevision: master
+      helm:
+        valueFiles:
+          - $valuesRepo/value-files/sab_values.yaml
+    - repoURL: https://github.com/truecharts/charts.git
+      path: charts/stable/sonarr
+      targetRevision: main
+      helm:
+        valueFiles:
+          - $valuesRepo/value-files/sab_values.yaml
