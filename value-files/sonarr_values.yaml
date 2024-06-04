@@ -74,6 +74,7 @@ persistence:
         main:
           mountPath: "/config"
           pvNames: son
+          existingClaim: son-pvc
           winPath: /c/sonarr
       exportarr:
         exportarr:
@@ -86,6 +87,7 @@ persistence:
         main:
           mountPath: "/sabnzbd"
           pvNames: sab
+          existingClaim: sab-pvc
           winPath: /c/sabnzbd
 metrics:
   main:
