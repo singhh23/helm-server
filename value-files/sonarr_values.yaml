@@ -69,26 +69,28 @@ workload:
 persistence:
   config:
     enabled: true
+    type: pvc
+    pvNames: son
+    existingClaim: son-pvc
+    winPath: /c/sonarr
     targetSelector:
       main:
         main:
           mountPath: "/config"
-          pvNames: son
-          existingClaim: son-pvc
-          winPath: /c/sonarr
       exportarr:
         exportarr:
           mountPath: /config
           readOnly: true
   sabnzbd:
     enabled: true
+    type: pvc
+    pvNames: sab
+    existingClaim: sab-pvc
+    winPath: /c/sabnzbd
     targetSelector:
       main:
         main:
           mountPath: "/sabnzbd"
-          pvNames: sab
-          existingClaim: sab-pvc
-          winPath: /c/sabnzbd
 metrics:
   main:
     enabled: false
