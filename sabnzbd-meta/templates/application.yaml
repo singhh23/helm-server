@@ -9,17 +9,17 @@ spec:
     server: https://kubernetes.default.svc
     namespace: argocd
   sources:
+    - repoURL: https://github.com/truecharts/charts.git
+      path: charts/stable/sabnzbd
+      targetRevision: master
+      helm:
+        valueFiles:
+          - $valuesRepo/value-files/sabnzbd_values.yaml
     - repoURL: git@github.com:singhh23/helm-server.git
       targetRevision: master
       ref: valuesRepo
     - repoURL: git@github.com:singhh23/helm-server.git
       path: generic-pvc
-      targetRevision: master
-      helm:
-        valueFiles:
-          - $valuesRepo/value-files/sabnzbd_values.yaml
-    - repoURL: https://github.com/truecharts/charts.git
-      path: charts/stable/sabnzbd
       targetRevision: master
       helm:
         valueFiles:

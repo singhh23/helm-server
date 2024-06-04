@@ -9,12 +9,12 @@ spec:
     server: https://kubernetes.default.svc
     namespace: argocd
   sources:
-    - repoURL: git@github.com:singhh23/helm-server.git
-      targetRevision: master
-      ref: valuesRepo
     - repoURL: https://github.com/argoproj/argo-helm.git
       path: charts/argo-cd
       targetRevision: main
       helm:
         valueFiles:
           - $valuesRepo/value-files/argocd_values.yaml
+    - repoURL: git@github.com:singhh23/helm-server.git
+      targetRevision: master
+      ref: valuesRepo
