@@ -1,7 +1,11 @@
 image:
-  repository: tccr.io/truecharts/sabnzbd
+  repository: ghcr.io/onedr0p/sabnzbd
   pullPolicy: IfNotPresent
-  tag: v4.0.1@sha256:e360b8faa51d47bbcea9d18e11de417f9dbbf09f2e3b73c415e67fa43f4e6473
+  tag: 4.3.2@sha256:8e70a877c77805dfe93ce30a8da3362fbddf221ef806951d4e4634bb80dc87b5
+exportarrImage:
+  repository: ghcr.io/onedr0p/exportarr
+  pullPolicy: IfNotPresent
+  tag: v2.0.1@sha256:727e7bc8f2f0934a2117978c59f4476b954018b849a010ea6cfb380bd6539644
 service:
   main:
     type: NodePort
@@ -10,18 +14,15 @@ service:
         port: 10097
         targetPort: 8080
         nodePort: 30447
-
-persistence:
-  config:
+  metrics:
     enabled: true
-    mountPath: "/config"
-    existingClaim: sabnzbd-pvc
-    winPath: /c/sabnzbd
-
-portal:
-  open:
-    enabled: true
-
+    type: ClusterIP
+    targetSelector: exportarr
+    ports:
+      metrics:
+        enabled: true
+        port: 8990
+        targetSelector: exportarr
 workload:
   main:
     podSpec:
@@ -29,3 +30,66 @@ workload:
         main:
           env:
             SABNZBD__HOST_WHITELIST_ENTRIES: ""
+            SABNZBD__PORT: "{{ .Values.service.main.ports.main.port }}"
+  exportarr:
+    enabled: "{{ .Values.metrics.main.enabled }}"
+    type: Deployment
+    strategy: RollingUpdate
+    replicas: 1
+    podSpec:
+      containers:
+        exportarr:
+          primary: true
+          enabled: true
+          imageSelector: exportarrImage
+          args:
+            - sabnzbd
+          probes:
+            liveness:
+              enabled: true
+              type: http
+              path: /healthz
+              port: "{{ .Values.service.metrics.ports.metrics.port }}"
+            readiness:
+              enabled: true
+              type: http
+              path: /healthz
+              port: "{{ .Values.service.metrics.ports.metrics.port }}"
+            startup:
+              enabled: true
+              type: http
+              path: /healthz
+              port: "{{ .Values.service.metrics.ports.metrics.port }}"
+          env:
+            INTERFACE: 0.0.0.0
+            PORT: "{{ .Values.service.metrics.ports.metrics.port }}"
+            URL: '{{ printf "http://%v:%v" (include "tc.v1.common.lib.chart.names.fullname" $) .Values.service.main.ports.main.port }}'
+            APIKEY: "{{ .Values.metrics.main.apiKey }}"
+persistence:
+  config:
+    enabled: true
+    targetSelector:
+      main:
+        main:
+          mountPath: "/config"
+          existingClaim: sabnzbd-pvc
+          winPath: /c/sabnzbd
+      exportarr:
+        exportarr:
+          mountPath: /config
+          readOnly: true
+
+metrics:
+  main:
+    enabled: false
+    type: "servicemonitor"
+    endpoints:
+      - port: metrics
+        path: /metrics
+    targetSelector: metrics
+    # Required for exportarr
+    apiKey: ""
+
+portal:
+  open:
+    enabled: true
