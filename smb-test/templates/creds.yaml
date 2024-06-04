@@ -4,5 +4,5 @@ metadata:
   name: mysecret
 type: Opaque
 data:
-  username: {{ .Values.username | b64env }}
+  username: {{ .Values.username | b64enc }}
   password: {{ .Values.password | b64enc }}
