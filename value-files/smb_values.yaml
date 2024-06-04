@@ -85,7 +85,7 @@ node:
   nodeSelector: {}
 
 linux:
-  enabled: false
+  enabled: true
   dsName: csi-smb-node # daemonset name
   dnsPolicy: Default  # available values: Default, ClusterFirstWithHostNet, ClusterFirst
   kubelet: /var/lib/kubelet
@@ -112,9 +112,9 @@ linux:
         memory: 20Mi
 
 windows:
-  enabled: true
+  enabled: false
   dsName: csi-smb-node-win # daemonset name
-  kubelet: 'C:\var\lib\kubelet'
+  kubelet: /var/lib/kubelet
   removeSMBMappingDuringUnmount: true
   tolerations:
     - key: "node.kubernetes.io/os"
