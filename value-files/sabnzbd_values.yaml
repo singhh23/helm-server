@@ -67,15 +67,15 @@ workload:
             APIKEY: "{{ .Values.metrics.main.apiKey }}"
 persistence:
   config:
-    type: pvc
     enabled: true
+    type: pvc
+    pvNames: sab
+    existingClaim: "{{ .Values.persistence.config.pvNames }}"-pvc
+    winPath: /c/sabnzbd
     targetSelector:
       main:
         main:
           mountPath: "/config"
-          pvNames: sab
-          existingClaim: sab-pvc
-          winPath: /c/sabnzbd
       exportarr:
         exportarr:
           mountPath: /config

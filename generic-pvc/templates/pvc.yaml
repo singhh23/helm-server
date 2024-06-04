@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ .Values.persistence.config.targetSelector.main.main.pvNames }}-pvc
+  name: {{ .Values.persistence.config.pvNames }}-pvc
 spec:
   storageClassName: hostpath
   accessModes:
