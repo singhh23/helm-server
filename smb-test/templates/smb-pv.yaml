@@ -19,9 +19,9 @@ spec:
     driver: smb.csi.k8s.io
     # volumeHandle format: {smb-server-address}#{sub-dir-name}#{share-name}
     # make sure this value is unique for every share in the cluster
-    volumeHandle: U24aNAS##
+    volumeHandle: U24aNAS#video#
     volumeAttributes:
-      source: //U24aNAS
+      source: //U24aNAS/video
     nodeStageSecretRef:
       name: smbcreds
       namespace: default
