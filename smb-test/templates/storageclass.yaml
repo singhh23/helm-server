@@ -22,3 +22,4 @@ mountOptions:
   - mfsymlinks
   - cache=strict
   - noserverino  # required to prevent data corruption
+  - vers=1.0
