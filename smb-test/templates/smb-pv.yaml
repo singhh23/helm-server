@@ -10,10 +10,18 @@ spec:
   accessModes:
     - ReadWriteMany
   persistentVolumeReclaimPolicy: Retain
+  claimRef:
+    name: pvc-smb
   storageClassName: smb
   mountOptions:
     - dir_mode=0777
     - file_mode=0777
+    - uid=1001
+    - gid=1001
+    - noperm
+    - mfsymlinks
+    - cache=strict
+    - noserverino  # required to prevent data corruption
     - vers=1.0
   csi:
     driver: smb.csi.k8s.io
