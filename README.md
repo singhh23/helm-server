@@ -5,7 +5,7 @@ Initial install:
 - Install helm (https://helm.sh/docs/intro/install/)
 - Manually install argocd:
     - `kubectl create namespace argocd`
-    - `helm install argocd argo-cd/ --namespace argocd`
+    - `helm install argocd argo/argo-cd -f ../value-files/argocd_values.yaml -n argocd`
 - Install the argocdcli:
     - `curl -sSL -o argocd-linux-amd64 https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64`
     - `sudo install -m 555 argocd-linux-amd64 /usr/local/bin/argocd`
