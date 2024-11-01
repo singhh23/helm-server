@@ -15,12 +15,12 @@ service:
         targetPort: 8989
         nodePort: 30448
   metrics:
-    enabled: true
+    enabled: false
     type: ClusterIP
     targetSelector: exportarr
     ports:
       metrics:
-        enabled: true
+        enabled: false
         port: 8990
         targetSelector: exportarr
 workload:
@@ -109,7 +109,7 @@ persistence:
           mountPath: "/sabnzbd"
 metrics:
   main:
-    enabled: true
+    enabled: false
     type: "servicemonitor"
     endpoints:
       - port: metrics
